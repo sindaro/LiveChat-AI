@@ -1,0 +1,311 @@
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===================================================
+   RICH MESSAGE RENDERER STYLES
+   =================================================== */
+
+.rich-message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.rich-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Paragraphs */
+.rich-p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+/* Headings */
+.rich-heading {
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 0.25rem;
+  margin-bottom: 0.1rem;
+}
+.rich-h1 { font-size: 1.05rem; }
+.rich-h2 { font-size: 0.975rem; }
+.rich-h3 { font-size: 0.9rem; color: #4b5563; }
+
+/* Lists */
+.rich-ul {
+  list-style: none;
+  padding-left: 0.25rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.rich-ol {
+  list-style: decimal;
+  padding-left: 1.1rem;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.rich-ul .rich-li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+.rich-ul .rich-li::before {
+  content: '•';
+  color: #10b981;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Inline elements */
+.rich-bold {
+  font-weight: 700;
+  color: inherit;
+}
+.rich-italic {
+  font-style: italic;
+  color: inherit;
+}
+.rich-inline-code {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-size: 0.82em;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.rich-link {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+  transition: color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.rich-link:hover {
+  color: #1d4ed8;
+}
+
+/* Code block */
+.rich-code-block {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.8rem;
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  overflow-x: auto;
+  margin: 0.25rem 0;
+  position: relative;
+}
+.rich-code-lang {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* Blockquote */
+.rich-blockquote {
+  border-left: 3px solid #10b981;
+  padding: 0.4rem 0.75rem;
+  background: rgba(16, 185, 129, 0.05);
+  border-radius: 0 8px 8px 0;
+  color: #374151;
+  font-style: italic;
+  margin: 0;
+}
+
+/* Horizontal rule */
+.rich-hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 0.3rem 0;
+}
+
+/* User content */
+.rich-user-content {
+  display: inline;
+  line-height: 1.65;
+}
+
+/* ===================================================
+   PRODUCT CARD STYLES
+   =================================================== */
+
+.rich-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.rich-product-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+.rich-product-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+}
+
+.rich-product-img-wrapper {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background: #f3f4f6;
+}
+.rich-product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rich-product-body {
+  padding: 0.65rem 0.8rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.rich-product-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.rich-product-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+.rich-product-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  padding: 0.15em 0.5em;
+  border-radius: 999px;
+}
+
+.rich-product-name {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.rich-product-desc {
+  font-size: 0.72rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.45;
+  flex: 1;
+}
+
+.rich-product-price {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #059669;
+  margin-top: 0.2rem;
+}
+.rich-price-icon {
+  color: #10b981;
+}
+
+/* ===================================================
+   DARK MODE OVERRIDES FOR RICH STYLES
+   =================================================== */
+
+.dark .rich-h3 { color: #9ca3af; }
+
+.dark .rich-blockquote {
+  background: rgba(16, 185, 129, 0.08);
+  color: #d1d5db;
+  border-left-color: #10b981;
+}
+
+.dark .rich-hr {
+  border-top-color: #3f3f46;
+}
+
+.dark .rich-inline-code {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dark .rich-link {
+  color: #60a5fa;
+}
+.dark .rich-link:hover {
+  color: #93c5fd;
+}
+
+.dark .rich-product-card {
+  background: #18181b;
+  border-color: #3f3f46;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+.dark .rich-product-card:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+}
+
+.dark .rich-product-img-wrapper {
+  background: #27272a;
+}
+
+.dark .rich-product-name {
+  color: #f4f4f5;
+}
+
+.dark .rich-product-desc {
+  color: #a1a1aa;
+}
