@@ -68,6 +68,25 @@ async function generateWithRotator(apiKeys: string[], executeFn: (genAI: GoogleG
   throw lastError || new Error('All provided API keys failed.');
 }
 
+// OpenAI embeddings fallback
+async function getOpenAIEmbedding(text: string): Promise<number[]> {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (!openaiKey) throw new Error('OPENAI_API_KEY not configured for embeddings fallback');
+
+  const res = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+    body: JSON.stringify({ model: 'text-embedding-3-small', input: text }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`OpenAI Embeddings ${res.status}: ${(err as any)?.error?.message ?? 'Unknown error'}`);
+  }
+
+  const data = await res.json() as any;
+  return data.data?.[0]?.embedding ?? [];
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -135,11 +154,23 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       try {
-        const embedding = await generateWithRotator(tenantApiKeys, async (genAI) => {
-            const model = genAI.getGenerativeModel({ model: 'embedding-001' });
-            const result = await model.embedContent(chunk);
-            return result.embedding.values;
-        });
+        let embedding: number[];
+        try {
+          embedding = await generateWithRotator(tenantApiKeys, async (genAI) => {
+              const model = genAI.getGenerativeModel({ model: 'embedding-001' });
+              const result = await model.embedContent(chunk);
+              return result.embedding.values;
+          });
+        } catch (geminiError: any) {
+          const isQuota = geminiError?.status === 429
+            || geminiError?.message?.includes('429')
+            || geminiError?.message?.includes('quota');
+          
+          if (!isQuota) throw geminiError;
+          
+          console.warn('Gemini embedding quota exhausted — trying OpenAI fallback...');
+          embedding = await getOpenAIEmbedding(chunk);
+        }
 
         recordsToInsert.push({
           business_id: businessId,
