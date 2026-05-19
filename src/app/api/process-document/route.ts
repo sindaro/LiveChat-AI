@@ -148,11 +148,8 @@ export async function POST(req: NextRequest) {
     // 4. Chunk the text
     const chunks = chunkText(text);
 
-    // 5. Generate embeddings and store in database using Rotator
-    const recordsToInsert = [];
-    
-    for (let i = 0; i < chunks.length; i++) {
-      const chunk = chunks[i];
+    // 5. Generate embeddings and store in database using Rotator in parallel
+    const embeddingPromises = chunks.map(async (chunk, i) => {
       try {
         let embedding: number[];
         try {
@@ -168,22 +165,26 @@ export async function POST(req: NextRequest) {
           
           if (!isQuota) throw geminiError;
           
-          console.warn('Gemini embedding quota exhausted — trying OpenAI fallback...');
+          console.warn(`Gemini embedding quota exhausted for chunk ${i} — trying OpenAI fallback...`);
           embedding = await getOpenAIEmbedding(chunk);
         }
 
-        recordsToInsert.push({
+        return {
           business_id: businessId,
-          owner_id: businessProfile.owner_id, // Add owner_id to fulfill RLS/schema
+          owner_id: businessProfile.owner_id,
           title: fileName,
           content: chunk,
           embedding: embedding,
           metadata: { chunk_index: i, total_chunks: chunks.length }
-        });
+        };
       } catch (embedError) {
         console.error(`Failed to embed chunk ${i}:`, embedError);
+        return null;
       }
-    }
+    });
+
+    const results = await Promise.all(embeddingPromises);
+    const recordsToInsert = results.filter((record) => record !== null);
 
     // 6. Insert into Supabase KnowledgeDocuments table using Admin client
     if (recordsToInsert.length > 0) {
