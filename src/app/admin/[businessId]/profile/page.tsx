@@ -122,7 +122,7 @@ export default function ProfilePage() {
         updated_at: new Date().toISOString(),
       };
       if (formData.id) {
-        const { error } = await supabase.from('BusinessProfiles').update(payload).eq('id', formData.id);
+        const { error } = await supabase.from('BusinessProfiles').update(payload).eq('id', formData.id).select().single();
         if (error) throw error;
       } else {
         const { data, error } = await supabase.from('BusinessProfiles').insert([{ owner_id: userId, ...payload }]).select().single();

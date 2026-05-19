@@ -23,9 +23,9 @@ create table "public"."BusinessProfiles" (
   "collect_customer_data" boolean default false,
   "customer_data_fields" jsonb default '["name"]'::jsonb,
    "escalation_label" text default 'Owner',
-+  "primary_color" text default '#059669',
-+  "show_branding" boolean default true,
-   "updated_at" timestamp with time zone default timezone('utc'::text, now()),
+  "primary_color" text default '#059669',
+  "show_branding" boolean default true,
+  "updated_at" timestamp with time zone default timezone('utc'::text, now()),
    "created_at" timestamp with time zone default timezone('utc'::text, now()) not null
  );
 
