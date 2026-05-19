@@ -76,7 +76,7 @@ async function getOpenAIEmbedding(text: string): Promise<number[]> {
   const res = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
-    body: JSON.stringify({ model: 'text-embedding-3-small', input: text }),
+    body: JSON.stringify({ model: 'text-embedding-3-small', input: text, dimensions: 768 }),
   });
 
   if (!res.ok) {
