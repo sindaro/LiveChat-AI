@@ -189,6 +189,46 @@ export default function IntegrationPage() {
                     </a>
                   </div>
                 </div>
+
+                {/* 3. Webhook Architecture */}
+                <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+                  <div className="p-6 border-b border-zinc-100 dark:border-zinc-800">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 rounded-lg">
+                        <Code2 className="h-5 w-5" />
+                      </div>
+                      <h3 className="font-bold text-zinc-900 dark:text-zinc-50">Webhook API (Advanced)</h3>
+                    </div>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">Gunakan endpoint webhook ini untuk menghubungkan LiveChat-AI dengan Make, Zapier, atau custom backend Anda.</p>
+                  </div>
+                  <div className="p-6 bg-zinc-50 dark:bg-zinc-950/50">
+                    <div className="mb-4">
+                      <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-2 uppercase tracking-wider">Incoming Webhook URL</label>
+                      <div className="flex">
+                        <input 
+                          type="text" 
+                          readOnly 
+                          value={`https://livechat-ai.com/api/webhooks/incoming/${businessId}`} 
+                          className="block w-full rounded-l-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 shadow-sm text-sm p-3 text-zinc-600 dark:text-zinc-400 font-mono"
+                        />
+                        <button 
+                          onClick={() => handleCopy(`https://livechat-ai.com/api/webhooks/incoming/${businessId}`, 'link')}
+                          className="px-4 rounded-r-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors border border-l-0 border-zinc-900 dark:border-white flex items-center justify-center shrink-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                      <p className="text-xs font-semibold mb-2 text-zinc-700 dark:text-zinc-300">Event Triggers yang didukung:</p>
+                      <ul className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1.5 list-disc list-inside">
+                        <li><code className="text-zinc-900 dark:text-zinc-300 font-medium">lead.captured</code> - Terjadi saat AI berhasil mendapatkan data pelanggan.</li>
+                        <li><code className="text-zinc-900 dark:text-zinc-300 font-medium">handover.requested</code> - Terjadi saat pelanggan meminta eskalasi ke manusia.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
               </div>
 
               {/* Right Column: Platform Guides */}

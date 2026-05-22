@@ -244,7 +244,7 @@ export default function KnowledgeBasePage() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Data Sources</h2>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Knowledge Base AI</h2>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Kelola sumber pengetahuan yang digunakan AI untuk menjawab pertanyaan pelanggan.</p>
             </div>
             <button onClick={() => setShowAddModal(true)}

@@ -161,12 +161,39 @@ export default function ConversationsPage() {
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Waktu</label>
               <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-100">{new Date(selectedConv.created_at).toLocaleString('id-ID')}</p>
             </div>
+            {/* Priority & Admin */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Prioritas</label>
+                <div className="mt-1.5 flex items-center">
+                  <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-md ${selectedConv.is_qualified ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {selectedConv.is_qualified ? '🔥 Hot' : 'Normal'}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Admin</label>
+                <div className="mt-1.5 flex items-center">
+                  <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Belum diassign</span>
+                </div>
+              </div>
+            </div>
+            {/* Tags */}
+            <div>
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Tags</label>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-xs text-zinc-600 dark:text-zinc-300">#prospek</span>
+                {selectedConv.is_qualified && (
+                  <span className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded text-xs text-zinc-600 dark:text-zinc-300">#hot-lead</span>
+                )}
+              </div>
+            </div>
             {/* AI Summary */}
             {selectedConv.lead_summary && (
               <div>
                 <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Ringkasan AI</label>
-                <div className="mt-2 p-4 bg-orange-50 dark:bg-orange-500/5 border border-orange-100 dark:border-orange-500/20 rounded-xl">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedConv.lead_summary}</p>
+                <div className="mt-2 p-4 bg-orange-50 dark:bg-orange-500/5 border border-orange-100 dark:border-orange-500/20 rounded-xl text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed space-y-2">
+                  <RichMessageRenderer content={selectedConv.lead_summary} isUser={false} />
                 </div>
               </div>
             )}

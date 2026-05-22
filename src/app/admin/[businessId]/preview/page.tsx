@@ -39,7 +39,7 @@ export default function PreviewPage() {
     return '';
   };
 
-  const standaloneUrl = businessId ? `${getBaseUrl()}/chat/${businessId}` : '';
+  const standaloneUrl = businessId ? `${getBaseUrl()}/chat/${businessId}?preview=true` : '';
 
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 transition-colors">
@@ -66,7 +66,7 @@ export default function PreviewPage() {
                       const iframe = document.querySelector('iframe');
                       if (iframe) {
                         // Reset session by reloading with a fresh key
-                        iframe.src = `${standaloneUrl}?t=${Date.now()}`;
+                        iframe.src = `${standaloneUrl}&t=${Date.now()}`;
                       }
                     }}
                     className="p-2 bg-zinc-900/80 hover:bg-zinc-900 text-white rounded-full backdrop-blur-md shadow-lg transition-all"

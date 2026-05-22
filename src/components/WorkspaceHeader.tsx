@@ -23,17 +23,6 @@ export default function WorkspaceHeader({ businesses, currentBusinessId }: Works
 
   const currentBusiness = businesses.find(b => b.id === currentBusinessId) || businesses[0];
 
-  const tabs = [
-    { name: 'Preview', href: `/admin/${currentBusinessId}/preview`, icon: LayoutDashboard },
-    { name: 'Settings', href: `/admin/${currentBusinessId}/profile`, icon: Settings },
-    { name: 'Embed & Integrate', href: `/admin/${currentBusinessId}/integration`, icon: Box },
-    { name: 'Chat Inbox', href: `/admin/${currentBusinessId}/conversations`, icon: MessageSquare },
-    { name: 'AI Actions', href: `/admin/${currentBusinessId}/engage`, icon: Megaphone },
-    { name: 'Data Sources', href: `/admin/${currentBusinessId}/knowledge-base`, icon: Database },
-    // { name: 'Contacts', href: `/admin/${currentBusinessId}/contacts`, icon: Contact }, // Uncomment when ready
-    { name: 'Analytics', href: `/admin/${currentBusinessId}/analytics`, icon: BarChart },
-  ];
-
   return (
     <div className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 shrink-0 z-30 transition-colors">
       {/* Top Header Row */}
@@ -78,8 +67,8 @@ export default function WorkspaceHeader({ businesses, currentBusinessId }: Works
                         setIsDropdownOpen(false);
                         if (business.id !== currentBusinessId) {
                           // Swap the businessId in the current pathname to keep them on the same tab if possible,
-                          // or just redirect to their profile/dashboard
-                          router.push(`/admin/${business.id}/profile`);
+                          // or just redirect to their general settings dashboard
+                          router.push(`/admin/${business.id}/general`);
                         }
                       }}
                       className={`w-full text-left flex items-center space-x-3 px-4 py-2.5 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors ${business.id === currentBusinessId ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' : 'text-zinc-700 dark:text-zinc-300'}`}
@@ -105,29 +94,6 @@ export default function WorkspaceHeader({ businesses, currentBusinessId }: Works
         <div className="flex items-center space-x-3">
           <ThemeToggle />
         </div>
-      </div>
-
-      {/* Tabbed Navigation Row */}
-      <div className="px-4 sm:px-6 overflow-x-auto no-scrollbar">
-        <nav className="flex space-x-1 sm:space-x-4">
-          {tabs.map((tab) => {
-            const isActive = pathname.includes(tab.href);
-            return (
-              <Link
-                key={tab.name}
-                href={tab.href}
-                className={`flex items-center whitespace-nowrap px-3 py-3 border-b-2 text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:border-zinc-300 dark:hover:border-zinc-700'
-                }`}
-              >
-                <tab.icon className={`h-4 w-4 mr-2 ${isActive ? 'text-emerald-500 dark:text-emerald-400' : 'text-zinc-400'}`} />
-                {tab.name}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
     </div>
   );

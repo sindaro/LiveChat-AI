@@ -43,7 +43,7 @@ async function generateWithGroq(
       role: 'system',
       content: systemInstruction +
         '\n\nRespond ONLY with a valid JSON object. Required fields:\n' +
-        '{"reply": "string", "isQualified": boolean, "leadSummary": "string", "suggestions": ["string", "string"]}',
+        '{"reply": "string", "customerName": "string or null", "customerPhone": "string or null", "customerIntent": "string", "leadStatus": "cold|warm|hot", "aiNote": "string", "suggestions": ["string", "string"]}',
     },
     ...history.map((msg) => ({
       role: msg.role === 'model' ? 'assistant' : 'user',
@@ -89,7 +89,7 @@ async function generateWithOpenAI(
       role: 'system',
       content: systemInstruction +
         '\n\nRespond ONLY with a valid JSON object. Required fields:\n' +
-        '{"reply": "string", "isQualified": boolean, "leadSummary": "string", "suggestions": ["string", "string"]}',
+        '{"reply": "string", "customerName": "string or null", "customerPhone": "string or null", "customerIntent": "string", "leadStatus": "cold|warm|hot", "aiNote": "string", "suggestions": ["string", "string"]}',
     },
     ...history.map((msg) => ({
       role: msg.role === 'model' ? 'assistant' : 'user',
@@ -180,7 +180,7 @@ export async function POST(req: NextRequest) {
 
     const { data: businessProfile, error: profileError } = await supabase
       .from('BusinessProfiles')
-      .select('name, prompt_rules, api_keys')
+      .select('*')
       .eq('id', businessId)
       .single();
 
@@ -226,10 +226,30 @@ export async function POST(req: NextRequest) {
       console.warn('RAG pipeline failed, proceeding without knowledge context:', embeddingError?.message);
     }
 
+    const aiPersonality = businessProfile.ai_personality || { mode: 'professional', formality: 3, emoji_level: 2 };
+    
+    // Map personality settings to prompt instructions
+    const formalityGuidance = aiPersonality.formality >= 4 ? "Gunakan bahasa formal dan sangat sopan." :
+                              aiPersonality.formality <= 2 ? "Gunakan bahasa santai, akrab, layaknya teman." :
+                              "Gunakan bahasa semi-formal yang sopan namun tidak kaku.";
+                              
+    const emojiGuidance = aiPersonality.emoji_level >= 4 ? "Sering gunakan emoji yang relevan untuk mencairkan suasana." :
+                          aiPersonality.emoji_level <= 2 ? "Gunakan emoji sesedikit mungkin, fokus pada profesionalitas." :
+                          "Gunakan 1-2 emoji secukupnya untuk menjaga keramahan.";
+
+    const modeGuidance = aiPersonality.mode === 'friendly' ? "Kamu sangat ramah, hangat, dan empatik." :
+                         aiPersonality.mode === 'fast-selling' ? "Kamu to-the-point, fokus pada jualan (conversion), dan selalu berusaha mengarahkan ke transaksi." :
+                         "Kamu adalah representasi profesional dari brand.";
+
     const systemInstruction = `
-You are a customer support agent and lead qualifier (a "Bouncer") for a business named "${businessProfile.name}".
+You are an AI Customer Service agent named "${businessProfile.assistant_name || 'Asisten AI'}" working for a business named "${businessProfile.name}".
 Your goal is to answer user questions politely based strictly on the provided Knowledge Context.
 You must also qualify leads before allowing them to proceed to contact the owner.
+
+PERSONALITY & TONE:
+- Character Mode: ${modeGuidance}
+- Formality: ${formalityGuidance}
+- Emoji Usage: ${emojiGuidance}
 
 KNOWLEDGE CONTEXT:
 ${knowledgeContext ? knowledgeContext : 'No specific knowledge base provided.'}
@@ -237,14 +257,20 @@ ${knowledgeContext ? knowledgeContext : 'No specific knowledge base provided.'}
 QUALIFICATION RULES:
 ${businessProfile.prompt_rules ? businessProfile.prompt_rules : 'Determine if the user has a serious intent to purchase. Ask relevant qualifying questions if their intent is unclear.'}
 
-INSTRUCTIONS:
-1. Answer the user's questions accurately using ONLY the Knowledge Context. If the answer is not in the context, politely state that you do not know.
-2. Follow the QUALIFICATION RULES strictly. Do not mark the user as qualified until they have explicitly met all the conditions stated in the rules.
-3. If they are not yet qualified, keep the conversation going and ask the necessary questions to satisfy the rules.
-4. If they have met ALL the qualification rules, acknowledge it positively and explicitly state that they can now proceed to contact the owner via the button provided.
-5. IF the user is qualified, you MUST provide a "leadSummary" summarizing their profile, requests, and answers to the qualification questions. If not qualified, leave it empty.
+INSTRUCTIONS FOR SOFT CTA FLOW:
+1. HELP FIRST: Answer the user's questions accurately using ONLY the Knowledge Context. Bangun trust dan bantu kebutuhan mereka terlebih dahulu. JANGAN TERDENGAR SEPERTI FORM BOT.
+2. NATURAL QUALIFICATION: Gali kebutuhan dan minat user. Update "customerIntent" berdasarkan obrolan sejauh ini.
+3. SOFT ASK NAME: Setelah user merasa terbantu, secara natural pancing untuk meminta nama mereka ("Oh ya, dengan kakak siapa ini?").
+4. SOFT ASK WHATSAPP: Jika mereka sudah cukup yakin (warm/hot) dan butuh eskalasi/detail lebih lanjut, secara halus tanyakan WhatsApp mereka sebelum transfer ke admin.
+5. LEAD STATUS EVALUATION:
+   - "cold": User hanya eksplorasi, belum ada tanda ketertarikan jelas.
+   - "warm": User mulai tertarik, bertanya harga, atau menanyakan detail spesifik.
+   - "hot": User sudah siap dihubungkan ke admin, sudah memberikan nama & kontak.
+6. HANYA setelah mereka siap (status hot), persilakan mereka untuk klik tombol penghubung ke admin/CS. JANGAN arahkan ke CS jika mereka masih di fase eksplorasi awal.
+7. Selalu isi field "aiNote" dengan rangkuman kondisi pelanggan (misal: "Tertarik solusi A, belum yakin soal harga").
 
 FORMATTING RULES (very important):
+- Jawablah dengan singkat, padat, idealnya 1-4 baris per paragraf. Hindari jawaban panjang yang membosankan.
 - Use **bold** for key terms, product names, or important information.
 - Use bullet lists (- item) when listing multiple features, benefits, or options.
 - Use numbered lists (1. item) when describing steps or ordered processes.
@@ -286,12 +312,19 @@ You can include multiple [PRODUCT_CARD] blocks. Only use them when explicitly di
             responseSchema: {
               type: SchemaType.OBJECT,
               properties: {
-                reply: { type: SchemaType.STRING, description: "The conversational response to the user's message." },
-                isQualified: { type: SchemaType.BOOLEAN, description: 'True ONLY if qualification rules are fully met.' },
-                leadSummary: { type: SchemaType.STRING, description: 'Summary only when isQualified is true, else empty.' },
-                suggestions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING }, description: '2 follow-up questions.' },
+                reply: { type: SchemaType.STRING, description: 'Balasan pesan untuk user' },
+                customerName: { type: SchemaType.STRING, description: 'Nama user jika sudah diketahui, jika belum maka null' },
+                customerPhone: { type: SchemaType.STRING, description: 'Nomor WA user jika sudah diketahui, jika belum maka null' },
+                customerIntent: { type: SchemaType.STRING, description: 'Niat atau topik utama yang dicari user' },
+                leadStatus: { type: SchemaType.STRING, description: 'Status lead: cold, warm, atau hot' },
+                aiNote: { type: SchemaType.STRING, description: 'Rangkuman internal AI tentang kondisi dan kebutuhan user (readable by admin)' },
+                suggestions: {
+                  type: SchemaType.ARRAY,
+                  description: '2-3 tombol quick reply relevan untuk balasan berikutnya',
+                  items: { type: SchemaType.STRING }
+                }
               },
-              required: ['reply', 'isQualified', 'leadSummary'],
+              required: ['reply', 'leadStatus', 'suggestions']
             },
           },
         });
@@ -318,24 +351,49 @@ You can include multiple [PRODUCT_CARD] blocks. Only use them when explicitly di
       }
     }
 
-    if (conversationId) {
-      const updatedLogs = [...messages, { role: 'model', content: structuredResponse.reply }];
+    const newLogs = [...messages, { role: 'model', content: structuredResponse.reply }];
       
-      const { error: updateError } = await supabase
-        .from('Conversations')
-        .update({
-          logs: updatedLogs,
-          is_qualified: structuredResponse.isQualified,
-          lead_summary: structuredResponse.leadSummary || null,
-        })
-        .eq('id', conversationId);
+    // Construct human-readable lead summary
+    const constructedSummary = `
+**Nama**: ${structuredResponse.customerName || '-'}
+**No. WA**: ${structuredResponse.customerPhone || '-'}
+**Intent**: ${structuredResponse.customerIntent || '-'}
+**Status**: ${structuredResponse.leadStatus === 'hot' ? '🔥 Hot' : structuredResponse.leadStatus === 'warm' ? 'Warm' : 'Cold'} Lead
+**Catatan AI**: ${structuredResponse.aiNote || '-'}
+    `.trim();
 
-      if (updateError) {
-         console.error('Failed to update conversation logs:', updateError);
+    const isQualifiedFinal = structuredResponse.leadStatus === 'hot';
+
+    if (conversationId) {
+      await supabase.from('Conversations').update({
+        logs: newLogs,
+        is_qualified: isQualifiedFinal,
+        lead_summary: constructedSummary,
+        customer_name: structuredResponse.customerName || null,
+        customer_phone: structuredResponse.customerPhone || null,
+        updated_at: new Date().toISOString()
+      }).eq('id', conversationId);
+
+      if (isQualifiedFinal) {
+        // Upsert to Leads
+        await supabase.from('Leads').upsert({
+          business_id: businessId,
+          name: structuredResponse.customerName || 'Anonymous',
+          phone: structuredResponse.customerPhone || '',
+          email: '',
+          status: 'Baru',
+          lead_summary: constructedSummary,
+        });
       }
     }
 
-    return NextResponse.json(structuredResponse);
+    return NextResponse.json({
+      reply: structuredResponse.reply,
+      isQualified: isQualifiedFinal,
+      leadStatus: structuredResponse.leadStatus,
+      leadSummary: constructedSummary,
+      suggestions: structuredResponse.suggestions
+    });
 
   } catch (error: any) {
     console.error('Chat endpoint error:', error);

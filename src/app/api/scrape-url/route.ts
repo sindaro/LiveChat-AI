@@ -32,7 +32,7 @@ async function scrapeWithGroq(prompt: string): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
     body: JSON.stringify({
-      model: 'llama-3.3-70b-versatile',
+      model: 'llama-3.1-8b-instant',
       messages: [{ role: 'user', content: prompt }],
       max_tokens: 4000,
       temperature: 0.3,
@@ -171,8 +171,13 @@ OUTPUT:
         cleanedContent = await scrapeWithGroq(prompt);
       } catch (groqError: any) {
         // --- Fallback 2: OpenAI ---
-        console.warn('Groq failed — trying OpenAI fallback for scraping...', groqError?.message);
-        cleanedContent = await scrapeWithOpenAI(prompt);
+        try {
+          console.warn('Groq failed — trying OpenAI fallback for scraping...', groqError?.message);
+          cleanedContent = await scrapeWithOpenAI(prompt);
+        } catch (openAiError: any) {
+          console.error('OpenAI fallback failed:', openAiError?.message);
+          throw new Error('Semua AI provider (Gemini, Groq, OpenAI) sedang limit atau sibuk. Silakan coba beberapa menit lagi.');
+        }
       }
     }
 

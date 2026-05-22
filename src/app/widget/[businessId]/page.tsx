@@ -23,21 +23,26 @@ export default async function WidgetPage({ params }: WidgetPageProps) {
     notFound();
   }
 
+  const branding = businessProfile.branding || {};
+  const chatFlow = businessProfile.chat_flow || {};
+  const cta = businessProfile.cta_settings || {};
+  const handover = businessProfile.handover_settings || {};
+
   return (
     <div className="bg-transparent w-full h-full pointer-events-auto font-sans">
       <ChatWidget
         businessId={businessProfile.id}
         businessName={businessProfile.name}
         waNumber={businessProfile.wa_number || ''}
-        preFilledMsg={businessProfile.pre_filled_msg || ''}
-        assistantName={businessProfile.assistant_name || undefined}
-        assistantAvatarUrl={businessProfile.assistant_avatar_url || undefined}
-        quickReplies={businessProfile.quick_replies || []}
-        collectCustomerData={businessProfile.collect_customer_data || false}
-        customerDataFields={businessProfile.customer_data_fields || ['name']}
-        escalationLabel={businessProfile.escalation_label || 'Owner'}
-        primaryColor={businessProfile.primary_color || undefined}
-        showBranding={businessProfile.show_branding !== undefined ? businessProfile.show_branding : true}
+        preFilledMsg={handover.pre_filled_msg || ''}
+        assistantName={branding.assistant_name || businessProfile.name}
+        assistantAvatarUrl={branding.logo_url || undefined}
+        quickReplies={chatFlow.quick_replies || []}
+        collectCustomerData={cta.capture_name || cta.capture_phone}
+        customerDataFields={[...(cta.capture_name ? ['name'] : []), ...(cta.capture_phone ? ['phone'] : [])]}
+        escalationLabel={handover.escalation_label || 'Owner'}
+        primaryColor={branding.primary_color || '#059669'}
+        showBranding={branding.show_branding !== false}
       />
     </div>
   );

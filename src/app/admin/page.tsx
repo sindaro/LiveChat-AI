@@ -78,7 +78,7 @@ export default function BusinessHub() {
 
       if (error) throw error;
       if (data) {
-        router.push(`/admin/${data.id}/profile`);
+        router.push(`/admin/${data.id}/general`);
       }
     } catch (error) {
       console.error('Error creating business:', error);
@@ -189,7 +189,7 @@ export default function BusinessHub() {
                 
                 <div className="border-t border-zinc-100 dark:border-zinc-800 p-4 bg-zinc-50 dark:bg-zinc-950/50 rounded-b-3xl mt-auto flex gap-2">
                   <Link 
-                    href={`/admin/${business.id}/preview`}
+                    href={`/admin/${business.id}/general`}
                     className="flex-1 flex items-center justify-between text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group"
                   >
                     Buka Dashboard

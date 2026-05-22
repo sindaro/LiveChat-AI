@@ -1,5 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import WorkspaceHeader from '@/components/WorkspaceHeader';
+import WorkspaceSidebar from '@/components/WorkspaceSidebar';
+import FloatingLivePreview from '@/components/FloatingLivePreview';
 import { notFound, redirect } from 'next/navigation';
 
 export default async function BusinessLayout({
@@ -38,10 +40,18 @@ export default async function BusinessLayout({
     <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       <WorkspaceHeader businesses={businesses} currentBusinessId={businessId} />
       
-      {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto focus:outline-none">
-        {children}
-      </main>
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left SaaS Sidebar */}
+        <WorkspaceSidebar currentBusinessId={businessId} />
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-y-auto focus:outline-none bg-zinc-50 dark:bg-zinc-950 relative">
+          {children}
+          
+          {/* Global Floating Preview */}
+          <FloatingLivePreview businessId={businessId} />
+        </main>
+      </div>
     </div>
   );
 }

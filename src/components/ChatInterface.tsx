@@ -21,6 +21,12 @@ interface ChatInterfaceProps {
   escalationLabel?: string;
   primaryColor?: string;
   showBranding?: boolean;
+  automationSettings?: {
+    welcome_enabled: boolean;
+    follow_up_enabled: boolean;
+    idle_message: string;
+    closing_reminder: string;
+  };
 }
 
 interface Message {
@@ -45,11 +51,26 @@ export default function ChatInterface({
   escalationLabel = 'Owner',
   primaryColor = '#059669',
   showBranding = true,
+  automationSettings = {
+    welcome_enabled: true,
+    follow_up_enabled: false,
+    idle_message: 'Halo kak, apakah masih ada yang ingin ditanyakan? 😊',
+    closing_reminder: 'Karena tidak ada respon, sesi chat ini saya tutup sementara ya. Silakan ketik pesan kapan saja jika butuh bantuan kembali! 🙏'
+  }
 }: ChatInterfaceProps) {
-  const displayName = assistantName || businessName;
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'model', content: initialMessage || `Halo! Saya ${displayName} dari ${businessName}. Ada yang bisa saya bantu hari ini?` }
-  ]);
+  // Visual & configuration state (synced with props or realtime preview)
+  const [liveConfig, setLiveConfig] = useState({
+    primaryColor,
+    assistantName,
+    assistantAvatarUrl,
+    quickReplies,
+    escalationLabel,
+    showBranding,
+    automationSettings
+  });
+
+  const displayName = liveConfig.assistantName || businessName;
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isQualified, setIsQualified] = useState(false);
@@ -62,6 +83,48 @@ export default function ChatInterface({
   const [customerData, setCustomerData] = useState<Record<string, string>>({});
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [customerDataSubmitted, setCustomerDataSubmitted] = useState(false);
+
+  // Setup Greetings
+  useEffect(() => {
+    if (messages.length === 0 && liveConfig.automationSettings.welcome_enabled) {
+      const greetings = [
+        `Halo! Saya ${displayName} dari ${businessName}. Ada yang bisa saya bantu hari ini?`,
+        `Selamat datang di ${businessName}! Saya ${displayName}, ada yang ingin ditanyakan?`,
+        `Hai! Dengan ${displayName} di sini. Ada yang bisa dibantu?`,
+      ];
+      const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+      setMessages([{ role: 'model', content: initialMessage || randomGreeting }]);
+    }
+  }, [displayName, businessName, initialMessage, liveConfig.automationSettings.welcome_enabled]);
+
+  // Idle Follow-up Automation
+  useEffect(() => {
+    if (!liveConfig.automationSettings.follow_up_enabled || messages.length === 0) return;
+    
+    // Only trigger if last message was from model
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role !== 'model') return;
+
+    // Set idle timeout (30 seconds for MVP demo, usually much longer like 10 mins)
+    const timeout = setTimeout(() => {
+      setMessages(prev => [...prev, { role: 'model', content: liveConfig.automationSettings.idle_message }]);
+    }, 30000); // 30 seconds
+
+    return () => clearTimeout(timeout);
+  }, [messages, liveConfig.automationSettings.follow_up_enabled, liveConfig.automationSettings.idle_message]);
+
+  // Live Preview Sync via BroadcastChannel
+  useEffect(() => {
+    if (!isDemo && typeof window !== 'undefined') {
+      const channel = new BroadcastChannel(`livechat-preview-${businessId}`);
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'UPDATE_CONFIG') {
+          setLiveConfig(prev => ({ ...prev, ...event.data.payload }));
+        }
+      };
+      return () => channel.close();
+    }
+  }, [businessId, isDemo]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -108,22 +171,35 @@ export default function ChatInterface({
       }
 
       const data = await response.json();
-      setMessages([...newMessages, { role: 'model', content: data.reply }]);
+      
+      // Dynamic Typing Delay (min 600ms, max 3000ms/4000ms based on length)
+      const replyLength = data.reply ? data.reply.length : 0;
+      let typingDelay = Math.min(600 + (replyLength * 15), 4000); // 15ms per char
+      
+      // Add a slight randomness (±200ms) to feel more human
+      typingDelay += (Math.random() * 400 - 200);
+      typingDelay = Math.max(600, Math.min(typingDelay, 4000));
 
-      if (data.suggestions && data.suggestions.length > 0) {
-        setDynamicSuggestions(data.suggestions);
-      } else {
-        setDynamicSuggestions([]);
-      }
+      setTimeout(() => {
+        setMessages([...newMessages, { role: 'model', content: data.reply }]);
 
-      if (data.isQualified) {
-        setIsQualified(true);
-        if (data.leadSummary) setLeadSummary(data.leadSummary);
-      }
+        if (data.suggestions && data.suggestions.length > 0) {
+          setDynamicSuggestions(data.suggestions);
+        } else {
+          setDynamicSuggestions([]);
+        }
+
+        if (data.isQualified || data.leadStatus === 'hot') {
+          setIsQualified(true);
+          if (data.leadSummary) setLeadSummary(data.leadSummary);
+        }
+        
+        setIsLoading(false);
+      }, typingDelay);
+
     } catch (error) {
       console.error('Chat error:', error);
       setMessages([...newMessages, { role: 'model', content: 'Maaf, terjadi kesalahan pada sistem kami. Silakan coba lagi nanti.' }]);
-    } finally {
       setIsLoading(false);
     }
   };
@@ -180,7 +256,7 @@ export default function ChatInterface({
       
       {/* Header */}
       <div 
-        style={{ backgroundColor: primaryColor }}
+        style={{ backgroundColor: liveConfig.primaryColor }}
         className="p-4 sm:p-5 flex items-center shadow-md z-10 shrink-0 relative overflow-hidden"
       >
         {/* Subtle background decoration */}
@@ -189,8 +265,8 @@ export default function ChatInterface({
         
         {/* Avatar */}
         <div className="h-11 w-11 bg-white/10 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-inner relative z-10 overflow-hidden shrink-0">
-          {assistantAvatarUrl ? (
-            <img src={assistantAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
+          {liveConfig.assistantAvatarUrl ? (
+            <img src={liveConfig.assistantAvatarUrl} alt={displayName} className="h-full w-full object-cover" />
           ) : (
             <Bot className="h-6 w-6 text-white drop-shadow-md" />
           )}
@@ -215,12 +291,12 @@ export default function ChatInterface({
               
               {/* Avatar */}
               <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center mt-auto mb-1 overflow-hidden ${msg.role === 'user' ? 'ml-2.5 shadow-sm' : 'bg-zinc-100 dark:bg-zinc-800 mr-2.5 shadow-sm border border-zinc-200 dark:border-zinc-700'}`}
-                style={msg.role === 'user' ? { backgroundColor: `${primaryColor}20` } : {}}
+                style={msg.role === 'user' ? { backgroundColor: `${liveConfig.primaryColor}20` } : {}}
               >
                 {msg.role === 'user' ? (
-                  <User className="h-4 w-4" style={{ color: primaryColor }} />
-                ) : assistantAvatarUrl ? (
-                  <img src={assistantAvatarUrl} alt="" className="h-full w-full object-cover" />
+                  <User className="h-4 w-4" style={{ color: liveConfig.primaryColor }} />
+                ) : liveConfig.assistantAvatarUrl ? (
+                  <img src={liveConfig.assistantAvatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <Bot className="h-4 w-4 text-zinc-700 dark:text-zinc-300" />
                 )}
@@ -228,7 +304,7 @@ export default function ChatInterface({
 
               {/* Bubble */}
               <div 
-                style={msg.role === 'user' ? { backgroundColor: primaryColor } : {}}
+                style={msg.role === 'user' ? { backgroundColor: liveConfig.primaryColor } : {}}
                 className={`px-4 py-3.5 rounded-2xl text-[14.5px] leading-relaxed shadow-sm transition-all hover:shadow-md ${
                 msg.role === 'user' 
                   ? 'text-white rounded-br-none border-transparent whitespace-pre-wrap' 
@@ -241,11 +317,11 @@ export default function ChatInterface({
         ))}
 
         {/* Quick Reply Buttons */}
-        {showQuickReplies && quickReplies.length > 0 && messages.length <= 1 && (
+        {showQuickReplies && liveConfig.quickReplies.length > 0 && messages.length <= 1 && (
           <div className="flex flex-wrap gap-2 px-1 animate-in fade-in slide-in-from-bottom-3 duration-500">
-            {quickReplies.map((reply, idx) => (
+            {liveConfig.quickReplies.map((reply, idx) => (
               <button key={idx} type="button" onClick={() => handleQuickReplyClick(reply)}
-                style={{ borderColor: `${primaryColor}40`, color: primaryColor }}
+                style={{ borderColor: `${liveConfig.primaryColor}40`, color: liveConfig.primaryColor }}
                 className="px-4 py-2.5 bg-white dark:bg-zinc-800 border text-sm font-medium rounded-2xl hover:bg-zinc-50 dark:hover:bg-zinc-900 shadow-sm hover:shadow-md transition-all active:scale-95">
                 {reply}
               </button>
@@ -257,8 +333,8 @@ export default function ChatInterface({
           <div className="flex justify-start animate-in fade-in duration-300">
             <div className="flex flex-row max-w-[85%]">
               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 mr-2.5 flex items-center justify-center mt-auto mb-1 shadow-sm border border-indigo-50 overflow-hidden">
-                {assistantAvatarUrl ? (
-                  <img src={assistantAvatarUrl} alt="" className="h-full w-full object-cover" />
+                {liveConfig.assistantAvatarUrl ? (
+                  <img src={liveConfig.assistantAvatarUrl} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <Bot className="h-4 w-4 text-indigo-700" />
                 )}
@@ -277,7 +353,7 @@ export default function ChatInterface({
           <div className="flex flex-wrap gap-2 px-1 py-2 animate-in fade-in slide-in-from-bottom-2 duration-500">
             {dynamicSuggestions.map((suggestion, idx) => (
               <button key={idx} type="button" onClick={() => handleQuickReplyClick(suggestion)}
-                style={{ backgroundColor: `${primaryColor}15`, borderColor: `${primaryColor}30`, color: primaryColor }}
+                style={{ backgroundColor: `${liveConfig.primaryColor}15`, borderColor: `${liveConfig.primaryColor}30`, color: liveConfig.primaryColor }}
                 className="px-4 py-2.5 border text-sm font-medium rounded-2xl hover:bg-white transition-all active:scale-95 shadow-sm">
                 {suggestion} →
               </button>
@@ -291,7 +367,7 @@ export default function ChatInterface({
             <div className="text-center mb-4">
               <h3 className="text-gray-900 dark:text-gray-100 font-bold text-base">Sebelum Lanjut</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Lengkapi data di bawah agar {escalationLabel} kami bisa melayani Anda dengan lebih baik.
+                Lengkapi data di bawah agar {liveConfig.escalationLabel} kami bisa melayani Anda dengan lebih baik.
               </p>
             </div>
             <div className="space-y-3">
@@ -314,7 +390,7 @@ export default function ChatInterface({
             </div>
             <button onClick={handleCustomerDataSubmit}
               className="w-full mt-4 py-3 px-4 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm active:scale-[0.98]">
-              Lanjutkan ke {escalationLabel} →
+              Lanjutkan ke {liveConfig.escalationLabel} →
             </button>
           </div>
         )}
@@ -322,23 +398,23 @@ export default function ChatInterface({
         {/* WhatsApp CTA (shown when qualified + customer data done or not required) */}
         {isQualified && !isLoading && (!collectCustomerData || customerDataSubmitted) && (
           <div 
-            style={{ borderColor: `${primaryColor}40`, boxShadow: `0 20px 25px -5px ${primaryColor}15` }}
+            style={{ borderColor: `${liveConfig.primaryColor}40`, boxShadow: `0 20px 25px -5px ${liveConfig.primaryColor}15` }}
             className="mt-6 p-6 bg-white dark:bg-zinc-800 border-2 rounded-3xl animate-in zoom-in-95 fade-in duration-700 relative overflow-hidden"
           >
             {/* Celebration Background */}
-            <div style={{ backgroundColor: primaryColor }} className="absolute -top-10 -right-10 w-32 h-32 opacity-10 rounded-full blur-3xl animate-pulse"></div>
-            <div style={{ backgroundColor: primaryColor, animationDelay: '1s' }} className="absolute -bottom-10 -left-10 w-32 h-32 opacity-10 rounded-full blur-3xl animate-pulse"></div>
+            <div style={{ backgroundColor: liveConfig.primaryColor }} className="absolute -top-10 -right-10 w-32 h-32 opacity-10 rounded-full blur-3xl animate-pulse"></div>
+            <div style={{ backgroundColor: liveConfig.primaryColor, animationDelay: '1s' }} className="absolute -bottom-10 -left-10 w-32 h-32 opacity-10 rounded-full blur-3xl animate-pulse"></div>
             
             <div className="flex flex-col items-center text-center relative z-10">
               <div 
-                style={{ backgroundColor: primaryColor }}
+                style={{ backgroundColor: liveConfig.primaryColor }}
                 className="w-16 h-16 text-white rounded-2xl flex items-center justify-center mb-4 rotate-3 shadow-lg animate-bounce"
               >
                 <MessageCircle className="w-8 h-8" />
               </div>
               <h3 className="text-zinc-900 dark:text-zinc-50 font-black text-xl mb-2">🎉 Prospek Terverifikasi!</h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6 leading-relaxed px-4">
-                Luar biasa! Semua data Anda sudah kami siapkan. Silakan klik tombol di bawah untuk terhubung langsung dengan <strong>{escalationLabel}</strong> kami.
+                Luar biasa! Semua data Anda sudah kami siapkan. Silakan klik tombol di bawah untuk terhubung langsung dengan <strong>{liveConfig.escalationLabel}</strong> kami.
               </p>
               
               <a 
@@ -347,10 +423,10 @@ export default function ChatInterface({
                 rel="noopener noreferrer"
                 className="w-full relative group overflow-hidden rounded-2xl transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                <div style={{ backgroundColor: primaryColor }} className="absolute inset-0 w-full h-full transition-all duration-300 group-hover:opacity-90"></div>
+                <div style={{ backgroundColor: liveConfig.primaryColor }} className="absolute inset-0 w-full h-full transition-all duration-300 group-hover:opacity-90"></div>
                 <div className="relative flex items-center justify-center py-4 px-6 text-white font-bold text-base shadow-xl">
                   <MessageCircle className="w-5 h-5 mr-3 animate-pulse" />
-                  Hubungi {escalationLabel} Sekarang
+                  Hubungi {liveConfig.escalationLabel} Sekarang
                 </div>
               </a>
               
@@ -385,7 +461,7 @@ export default function ChatInterface({
           <button
             type="submit"
             disabled={!input.trim() || isLoading || isQualified}
-            style={(!input.trim() || isLoading || isQualified) ? {} : { backgroundColor: primaryColor }}
+            style={(!input.trim() || isLoading || isQualified) ? {} : { backgroundColor: liveConfig.primaryColor }}
             className="absolute right-1.5 bottom-1.5 p-2.5 rounded-xl text-white disabled:bg-zinc-300 disabled:text-zinc-500 transition-all hover:shadow-md hover:scale-105 active:scale-95 disabled:scale-100 disabled:shadow-none"
           >
             <Send className="h-4 w-4 ml-0.5" />
@@ -395,7 +471,7 @@ export default function ChatInterface({
            <p className="text-center text-xs text-gray-500 mt-2">
              Sesi chat ini telah selesai. Silakan lanjutkan via WhatsApp.
            </p>
-        ) : showBranding && (
+        ) : liveConfig.showBranding && (
           <div className="flex justify-center mt-3">
              <a href="#" target="_blank" rel="noopener" className="text-[10px] text-zinc-400 hover:text-zinc-600 transition-colors flex items-center gap-1">
                Powered by <span className="font-bold">Sindaro IT</span>
