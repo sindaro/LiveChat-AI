@@ -123,12 +123,12 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
   }
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-slate-100 via-white to-indigo-50 flex items-start md:items-center justify-center p-0 md:p-6 font-sans relative overflow-hidden">
+    <div className="h-screen w-full bg-gradient-to-br from-slate-100 via-white to-indigo-50 flex items-stretch md:items-center justify-center p-0 md:p-6 font-sans relative overflow-hidden">
       {/* Decorative background blurs for standalone page */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-blue-400 opacity-10 blur-[100px] pointer-events-none"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-indigo-500 opacity-10 blur-[100px] pointer-events-none"></div>
       
-      <div className="relative z-10 w-full h-full flex items-start md:items-center justify-center">
+      <div className="relative z-10 w-full h-full flex items-stretch md:items-center justify-center">
         <ChatInterface
           businessId={businessProfile.id}
           businessName={businessProfile.name}
