@@ -1,0 +1,227 @@
+Tambahkan sistem Theme Management & Live Preview ke dalam menu:
+
+“Embed & Integrate”
+
+karena theme, widget appearance, dan full page chat experience sangat berkaitan dengan deployment/embed experience.
+
+====================================
+UPDATE STRUKTUR MENU
+====================
+
+Embed & Integrate
+├── Widget Embed
+├── Full Page Embed
+├── Standalone Link
+├── Theme & Appearance
+├── Live Preview
+├── Branding
+├── Integrations
+├── Webhook
+├── Deployment
+
+====================================
+
+1. THEME & APPEARANCE
+   ====================================
+
+Tambahkan sub menu baru:
+
+“Theme & Appearance”
+
+Fitur:
+
+* upload theme
+* import ZIP/folder theme
+* activate theme
+* switch theme
+* edit colors
+* typography
+* spacing
+* bubble style
+* sidebar style
+* CTA style
+* dark/light mode
+
+====================================
+2. LIVE PREVIEW SYSTEM
+======================
+
+Pada halaman pengaturan Embed & Integrate,
+tambahkan area “Live Preview” realtime.
+
+Tujuannya:
+owner bisa langsung melihat perubahan tanpa reload.
+
+====================================
+LIVE PREVIEW MODE
+=================
+
+Tambahkan 2 mode preview:
+
+1. Widget Preview
+2. Full Page Chat Preview
+
+====================================
+3. WIDGET PREVIEW
+=================
+
+Preview floating widget:
+
+* desktop
+* mobile
+* bubble position
+* open/close animation
+* CTA form
+* AI message style
+* branding
+* theme color
+
+Mirip preview widget Intercom/Crisp.
+
+====================================
+4. FULL PAGE CHAT PREVIEW
+=========================
+
+Tambahkan preview fullscreen seperti aplikasi chat modern.
+
+Preview harus menampilkan:
+
+* header
+* sidebar optional
+* conversation layout
+* typing animation
+* CTA form
+* quick action buttons
+* responsive mobile mode
+* desktop mode
+
+Feel:
+
+* ChatGPT
+* Intercom
+* modern AI SaaS
+
+====================================
+5. LIVE REALTIME UPDATE
+=======================
+
+Saat owner mengubah:
+
+* warna
+* bubble
+* font
+* layout
+* sidebar
+* CTA
+* branding
+* theme
+
+preview harus langsung berubah realtime.
+
+Tanpa full page reload.
+
+Gunakan:
+
+* BroadcastChannel
+* state sync
+* hot theme reload
+* reactive config update
+
+====================================
+6. RESPONSIVE PREVIEW
+=====================
+
+Tambahkan toggle:
+
+* Desktop
+* Tablet
+* Mobile
+
+Agar owner bisa melihat semua mode.
+
+====================================
+7. EMBED DEPLOYMENT PREVIEW
+===========================
+
+Tambahkan tab:
+
+* Widget Embed Code
+* iFrame Embed
+* Full HTML Embed
+* Standalone Hosted Page
+
+Dan preview otomatis sesuai mode deployment.
+
+====================================
+8. THEME ADAPTATION SYSTEM
+==========================
+
+Nantinya saya akan memberikan folder theme/template.
+
+System harus:
+
+* membaca struktur theme
+* adaptasi layout
+* mapping component
+* branding synchronization
+* responsive fixing
+* compatibility layer
+
+Tanpa merusak core app.
+
+====================================
+9. PREVIEW EXPERIENCE GOAL
+==========================
+
+Target experience:
+owner merasa seperti sedang membangun website modern secara visual.
+
+Flow ideal:
+
+* ubah setting
+* langsung lihat hasil
+* switch mode
+* deploy
+
+Tanpa coding.
+
+====================================
+10. PRIORITAS UX
+================
+
+Fokus:
+
+* clean
+* premium
+* smooth
+* lightweight
+* fast
+* mobile first
+* modern SaaS feel
+
+====================================
+11. IMPLEMENTATION PRIORITY
+===========================
+
+Phase awal fokus:
+
+1. Widget Preview
+2. Full Page Preview
+3. Theme Switching
+4. Live Realtime Update
+5. Responsive Preview
+6. Branding Sync
+
+Belum perlu:
+
+* visual drag-drop editor
+* advanced animation editor
+* marketplace complex
+
+Fokus:
+
+* stability
+* usability
+* premium experience
+* owner-friendly
+* scalable architecture

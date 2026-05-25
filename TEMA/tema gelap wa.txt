@@ -1,0 +1,360 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { 
+  Send, 
+  X, 
+  Paperclip, 
+  Smile, 
+  MoreVertical,
+  Check,
+  CheckCheck,
+  Phone,
+  Video,
+  Mic
+} from 'lucide-react';
+
+export default function App() {
+  const [isOpen, setIsOpen] = useState(true);
+  const [messageInput, setMessageInput] = useState('');
+  const messagesEndRef = useRef(null);
+
+  // Initial dummy messages for the demo
+  const [messages, setMessages] = useState([
+    {
+      id: 1,
+      sender: 'agent',
+      text: 'Halo! Selamat datang di layanan bantuan kami. Ada yang bisa saya bantu hari ini?',
+      timestamp: '10:00',
+      status: 'read'
+    },
+    {
+      id: 2,
+      sender: 'user',
+      text: 'Hai, saya ingin menanyakan tentang paket berlangganan tahunan.',
+      timestamp: '10:05',
+      status: 'read'
+    },
+    {
+      id: 3,
+      sender: 'agent',
+      text: 'Tentu. Untuk paket tahunan saat ini kami memiliki promo potongan 20%. Anda bisa melihat detailnya di halaman pricing kami.',
+      timestamp: '10:06',
+      status: 'read'
+    },
+    {
+      id: 4,
+      sender: 'user',
+      text: 'Oke, apakah promo tersebut berlaku untuk pengguna lama juga?',
+      timestamp: '10:08',
+      status: 'read'
+    },
+    {
+      id: 5,
+      sender: 'agent',
+      text: 'Ya, promo tersebut berlaku untuk semua pengguna yang melakukan upgrade atau perpanjangan bulan ini.',
+      timestamp: '10:09',
+      status: 'delivered'
+    }
+  ]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isOpen]);
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!messageInput.trim()) return;
+
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newMessage = {
+      id: messages.length + 1,
+      sender: 'user',
+      text: messageInput.trim(),
+      timestamp: timeString,
+      status: 'sent'
+    };
+
+    setMessages([...messages, newMessage]);
+    setMessageInput('');
+
+    // Simulate agent reply after a short delay
+    setTimeout(() => {
+      const replyMessage = {
+        id: messages.length + 2,
+        sender: 'agent',
+        text: 'Terima kasih atas pesannya. Kami akan segera memproses permintaan Anda.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'delivered'
+      };
+      setMessages(prev => [...prev, replyMessage]);
+    }, 1500);
+  };
+
+  return (
+    // Background layer representing a website page (Dark Theme background for contrast)
+    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4 relative font-sans">
+      
+      {/* Page Content Placeholder */}
+      <div className="text-center opacity-40 select-none">
+        <h1 className="text-4xl font-bold text-neutral-300 mb-4">Website Content</h1>
+        <p className="text-neutral-500">Live chat widget is positioned fixed on the bottom right.</p>
+      </div>
+
+      {/* Floating Action Button (if closed) */}
+      {!isOpen && (
+        <button 
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 active:scale-95 z-50 group"
+          style={{ backgroundColor: '#00a884' }} // Classic teal color
+          aria-label="Open Chat"
+        >
+          <svg className="w-7 h-7 text-white fill-current" viewBox="0 0 24 24">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+          </svg>
+          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-neutral-900"></span>
+          </span>
+        </button>
+      )}
+
+      {/* Chat Widget Container */}
+      <div 
+        className={`fixed bottom-6 right-6 sm:bottom-8 sm:right-8 w-[calc(100vw-2rem)] sm:w-[400px] h-[600px] max-h-[calc(100vh-4rem)] flex flex-col rounded-xl overflow-hidden shadow-2xl transition-all duration-300 origin-bottom-right z-50 ${isOpen ? 'scale-100 opacity-100' : 'scale-90 opacity-0 pointer-events-none'}`}
+        style={{
+          backgroundColor: '#0b141a', // Deep dark background
+          border: '1px solid #202c33'
+        }}
+      >
+        
+        {}
+        {/* Header */}
+        <div 
+          className="px-4 py-2.5 flex items-center justify-between shrink-0 z-10"
+          style={{ backgroundColor: '#202c33' }} // Header dark color
+        >
+          {/* Header Content */}
+          <div className="flex items-center gap-3">
+            {/* Back/Close Button - Mobile mostly, but we use it as close here */}
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="text-[#aebac1] hover:text-white transition-colors"
+              aria-label="Close"
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" className="fill-current">
+                <path d="M12 20.664L2.472 11.136l9.528-9.528 1.632 1.632-6.744 6.744h14.64v2.304H6.888l6.744 6.744-1.632 1.632z"></path>
+              </svg>
+            </button>
+
+            <div className="relative flex shrink-0 cursor-pointer">
+              <div className="w-10 h-10 rounded-full bg-slate-600 overflow-hidden flex items-center justify-center">
+                <svg viewBox="0 0 24 24" width="40" height="40" className="fill-current text-[#dfe5e7] opacity-60 mt-2">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"></path>
+                </svg>
+              </div>
+            </div>
+            <div className="cursor-pointer">
+              <h3 className="font-medium text-[#e9edef] text-[16px] leading-tight">Customer Support</h3>
+              <p className="text-[13px] text-[#8696a0] mt-0.5">online</p>
+            </div>
+          </div>
+
+          {/* Header Actions */}
+          <div className="flex items-center gap-4 text-[#aebac1]">
+            <button className="hover:text-white transition-colors" aria-label="Video Call">
+              <Video size={20} className="fill-current" />
+            </button>
+            <button className="hover:text-white transition-colors" aria-label="Voice Call">
+              <Phone size={19} className="fill-current" />
+            </button>
+            <button className="hover:text-white transition-colors" aria-label="More options">
+              <MoreVertical size={20} />
+            </button>
+          </div>
+        </div>
+
+        {}
+        {/* Messages Area */}
+        <div 
+          className="flex-1 overflow-y-auto p-4 flex flex-col gap-1 scroll-smooth relative"
+          style={{
+            // Classic dark doodle background simulation (using solid color for clean look)
+            backgroundColor: '#0b141a',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#374045 transparent'
+          }}
+        >
+          {/* Encryption Notice */}
+          <div className="flex justify-center mb-4 mt-2">
+            <div className="bg-[#182229] text-[#ffd279] text-[12px] px-4 py-1.5 rounded-lg text-center max-w-[90%] shadow-sm flex items-center gap-2">
+              <svg viewBox="0 0 24 24" width="12" height="12" className="fill-current">
+                <path d="M17.5 8H17V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2h-.5C5.12 8 4 9.12 4 10.5v10C4 21.88 5.12 23 6.5 23h11c1.38 0 2.5-1.12 2.5-2.5v-10C20 9.12 18.88 8 17.5 8zM12 18c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-10H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"></path>
+              </svg>
+              Messages are end-to-end encrypted.
+            </div>
+          </div>
+
+          {/* Date Separator */}
+          <div className="flex justify-center mb-3">
+            <span className="text-[12.5px] text-[#8696a0] bg-[#182229] px-3 py-1 rounded-lg shadow-sm">
+              TODAY
+            </span>
+          </div>
+
+          {messages.map((msg, index) => {
+            const isUser = msg.sender === 'user';
+            const prevMsg = index > 0 ? messages[index - 1] : null;
+            const nextMsg = index < messages.length - 1 ? messages[index + 1] : null;
+            
+            // Check if tail should be shown
+            const showTail = !prevMsg || prevMsg.sender !== msg.sender;
+            // Add margin bottom if the next message is from a different sender
+            const mb = (!nextMsg || nextMsg.sender !== msg.sender) ? 'mb-2' : 'mb-0.5';
+            
+            return (
+              <div 
+                key={msg.id} 
+                className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} ${mb}`}
+              >
+                <div className={`relative max-w-[85%] flex flex-col`}>
+                  
+                  {/* Message Bubble */}
+                  <div 
+                    className={`relative px-3 py-1.5 text-[14.5px] leading-[1.3] break-words shadow-sm ${
+                      isUser 
+                        ? 'bg-[#005c4b] text-[#e9edef]' 
+                        : 'bg-[#202c33] text-[#e9edef]'
+                    }`}
+                    style={{
+                      borderRadius: '7.5px',
+                      borderTopRightRadius: isUser && showTail ? '0' : '7.5px',
+                      borderTopLeftRadius: !isUser && showTail ? '0' : '7.5px',
+                    }}
+                  >
+                    {/* Tail SVG */}
+                    {showTail && isUser && (
+                      <span className="absolute top-0 -right-[8px] text-[#005c4b]">
+                        <svg viewBox="0 0 8 13" width="8" height="13" className="fill-current">
+                          <path d="M5.188 1H0v11.193l6.467-8.625C7.526 2.156 6.958 1 5.188 1z"></path>
+                        </svg>
+                      </span>
+                    )}
+                    {showTail && !isUser && (
+                      <span className="absolute top-0 -left-[8px] text-[#202c33]">
+                        <svg viewBox="0 0 8 13" width="8" height="13" className="fill-current">
+                          <path d="M1.533 3.568L8 12.193V1H2.812C1.042 1 .474 2.156 1.533 3.568z"></path>
+                        </svg>
+                      </span>
+                    )}
+
+                    <div className="flex flex-wrap items-end gap-2">
+                      <span className="pb-1 pt-0.5 min-w-[20px]">{msg.text}</span>
+                      
+                      {/* Message Metadata (Time & Status) inline */}
+                      <div className="flex items-center gap-1 float-right mt-1 ml-auto shrink-0 text-[11px] text-[#8696a0]">
+                        <span>{msg.timestamp}</span>
+                        {isUser && (
+                          <span className="ml-0.5">
+                            {msg.status === 'sent' && <Check size={14} />}
+                            {msg.status === 'delivered' && <CheckCheck size={14} />}
+                            {msg.status === 'read' && <CheckCheck size={14} className="text-[#53bdeb]" />}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {/* Empty div acting as scroll anchor */}
+          <div ref={messagesEndRef} className="h-2" />
+        </div>
+
+        {}
+        {/* Input Area */}
+        <div 
+          className="px-3 py-2.5 flex items-end gap-2 z-10 shrink-0"
+          style={{ backgroundColor: '#202c33' }}
+        >
+          {/* Main Input Container */}
+          <div className="flex-1 flex items-end bg-[#2a3942] rounded-3xl min-h-[44px]">
+            {/* Emoji Button */}
+            <button 
+              type="button" 
+              className="p-3 text-[#8696a0] hover:text-[#d1d7db] transition-colors shrink-0"
+              aria-label="Add emoji"
+            >
+              <Smile size={24} />
+            </button>
+
+            {/* Text Input */}
+            <textarea
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage(e);
+                }
+              }}
+              placeholder="Type a message"
+              className="flex-1 max-h-32 bg-transparent text-[#e9edef] placeholder-[#8696a0] text-[15px] py-3 focus:outline-none resize-none overflow-y-auto leading-tight"
+              style={{
+                scrollbarWidth: 'none', // Firefox
+                msOverflowStyle: 'none', // IE and Edge
+              }}
+              rows={1}
+            />
+
+            {/* Attachment & Camera Button */}
+            <button 
+              type="button" 
+              className="p-3 text-[#8696a0] hover:text-[#d1d7db] transition-colors shrink-0"
+              aria-label="Attach file"
+            >
+              <Paperclip size={22} className="-rotate-45 transform" />
+            </button>
+          </div>
+
+          {/* Send / Mic Button */}
+          <button 
+            onClick={messageInput.trim() ? handleSendMessage : undefined}
+            className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95"
+            style={{ backgroundColor: '#00a884' }}
+            aria-label={messageInput.trim() ? "Send message" : "Voice message"}
+          >
+            {messageInput.trim() ? (
+              <Send size={20} className="text-[#111b21] ml-1" />
+            ) : (
+              <Mic size={22} className="text-[#111b21]" />
+            )}
+          </button>
+        </div>
+
+      </div>
+      
+      {}
+      <style dangerouslySetInnerHTML={{__html: `
+        ::-webkit-scrollbar {
+          width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #374045;
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #4a555c;
+        }
+      `}} />
+    </div>
+  );
+}

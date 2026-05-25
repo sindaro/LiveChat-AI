@@ -5,10 +5,12 @@ import { MessageCircle, X, RefreshCw } from 'lucide-react';
 
 interface FloatingLivePreviewProps {
   businessId: string;
+  initialOpen?: boolean;
+  isFullScreen?: boolean;
 }
 
-export default function FloatingLivePreview({ businessId }: FloatingLivePreviewProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function FloatingLivePreview({ businessId, initialOpen = false, isFullScreen = false }: FloatingLivePreviewProps) {
+  const [isOpen, setIsOpen] = useState(initialOpen);
   const [key, setKey] = useState(0); // Used to force reload the iframe
 
   const getBaseUrl = () => {
@@ -18,7 +20,7 @@ export default function FloatingLivePreview({ businessId }: FloatingLivePreviewP
     return '';
   };
 
-  const standaloneUrl = businessId ? `${getBaseUrl()}/chat/${businessId}?preview=true` : '';
+  const standaloneUrl = businessId ? `${getBaseUrl()}/chat/${businessId}?preview=true${isFullScreen ? '&mode=fullscreen' : ''}` : '';
 
   return (
     <>
@@ -35,7 +37,11 @@ export default function FloatingLivePreview({ businessId }: FloatingLivePreviewP
 
       {/* Floating Widget */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[380px] h-[650px] max-h-[85vh] bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden z-50 animate-in slide-in-from-bottom-8 fade-in duration-300">
+        <div className={`fixed z-50 flex flex-col overflow-hidden bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in slide-in-from-bottom-8 fade-in duration-300 ${
+          isFullScreen 
+            ? 'w-[calc(100vw-40px)] h-[calc(100vh-40px)] lg:w-[800px] lg:h-[80vh] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' 
+            : 'bottom-6 right-6 w-[380px] h-[650px] max-h-[85vh]'
+        }`}>
           {/* Widget Header */}
           <div className="h-14 bg-zinc-900 flex items-center justify-between px-4 shrink-0">
             <span className="text-white font-medium text-sm flex items-center">

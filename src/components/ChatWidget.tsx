@@ -19,6 +19,8 @@ interface ChatWidgetProps {
   escalationLabel?: string;
   primaryColor?: string;
   showBranding?: boolean;
+  themeId?: string;
+  customThemeConfig?: any;
 }
 
 export default function ChatWidget({
@@ -35,6 +37,8 @@ export default function ChatWidget({
   escalationLabel,
   primaryColor,
   showBranding,
+  themeId,
+  customThemeConfig,
 }: ChatWidgetProps) {
   const [isOpen, setIsOpen] = useState(false);
   const displayName = assistantName || businessName;
@@ -119,6 +123,8 @@ export default function ChatWidget({
             escalationLabel={escalationLabel}
             primaryColor={primaryColor}
             showBranding={showBranding}
+            themeId={themeId}
+            customThemeConfig={customThemeConfig}
           />
         </div>
       )}

@@ -14,7 +14,7 @@ export default function CTAConversionPage() {
   const [message, setMessage] = useState('');
   
   const [ctaSettings, setCtaSettings] = useState({
-    mode: 'soft', // soft, hard
+    mode: 'hybrid', // conversational, form, hybrid
     capture_name: true,
     capture_phone: true,
     auto_summary: true,
@@ -111,21 +111,29 @@ export default function CTAConversionPage() {
           <label className="block text-sm font-bold text-zinc-900 dark:text-zinc-50 mb-2">Gaya Call to Action (CTA)</label>
           <p className="text-xs text-zinc-500 mb-4">Bagaimana cara AI mengarahkan pelanggan ke admin?</p>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <button type="button" onClick={() => setCtaSettings({...ctaSettings, mode: 'soft'})} 
-              className={`p-4 rounded-xl border-2 text-left transition-colors relative overflow-hidden ${ctaSettings.mode === 'soft' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'}`}>
-              {ctaSettings.mode === 'soft' && <CheckCircle2 className="h-5 w-5 text-emerald-500 absolute top-4 right-4" />}
-              <Target className={`h-6 w-6 mb-2 ${ctaSettings.mode === 'soft' ? 'text-emerald-500' : 'text-zinc-400'}`} />
-              <div className="font-bold text-sm text-zinc-900 dark:text-white">Soft CTA</div>
-              <div className="text-xs text-zinc-500 mt-1">Sopan dan bertahap. "Boleh saya simpan nama kakak dulu?"</div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <button type="button" onClick={() => setCtaSettings({...ctaSettings, mode: 'conversational'})} 
+              className={`p-4 rounded-xl border-2 text-left transition-colors relative overflow-hidden ${ctaSettings.mode === 'conversational' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'}`}>
+              {ctaSettings.mode === 'conversational' && <CheckCircle2 className="h-5 w-5 text-emerald-500 absolute top-4 right-4" />}
+              <Target className={`h-6 w-6 mb-2 ${ctaSettings.mode === 'conversational' ? 'text-emerald-500' : 'text-zinc-400'}`} />
+              <div className="font-bold text-sm text-zinc-900 dark:text-white">Conversational</div>
+              <div className="text-xs text-zinc-500 mt-1">Mengumpulkan data lewat obrolan natural satu per satu.</div>
             </button>
             
-            <button type="button" onClick={() => setCtaSettings({...ctaSettings, mode: 'hard'})}
-              className={`p-4 rounded-xl border-2 text-left transition-colors relative overflow-hidden ${ctaSettings.mode === 'hard' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'}`}>
-              {ctaSettings.mode === 'hard' && <CheckCircle2 className="h-5 w-5 text-emerald-500 absolute top-4 right-4" />}
-              <Target className={`h-6 w-6 mb-2 ${ctaSettings.mode === 'hard' ? 'text-emerald-500' : 'text-zinc-400'}`} />
-              <div className="font-bold text-sm text-zinc-900 dark:text-white">Hard CTA</div>
-              <div className="text-xs text-zinc-500 mt-1">Langsung mengarahkan. "Silakan hubungi admin sekarang."</div>
+            <button type="button" onClick={() => setCtaSettings({...ctaSettings, mode: 'hybrid'})}
+              className={`p-4 rounded-xl border-2 text-left transition-colors relative overflow-hidden ${ctaSettings.mode === 'hybrid' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'}`}>
+              {ctaSettings.mode === 'hybrid' && <CheckCircle2 className="h-5 w-5 text-emerald-500 absolute top-4 right-4" />}
+              <Target className={`h-6 w-6 mb-2 ${ctaSettings.mode === 'hybrid' ? 'text-emerald-500' : 'text-zinc-400'}`} />
+              <div className="font-bold text-sm text-zinc-900 dark:text-white">Hybrid (Default)</div>
+              <div className="text-xs text-zinc-500 mt-1">Ngobrol sedikit, lalu otomatis memunculkan form modern.</div>
+            </button>
+
+            <button type="button" onClick={() => setCtaSettings({...ctaSettings, mode: 'form'})}
+              className={`p-4 rounded-xl border-2 text-left transition-colors relative overflow-hidden ${ctaSettings.mode === 'form' ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300'}`}>
+              {ctaSettings.mode === 'form' && <CheckCircle2 className="h-5 w-5 text-emerald-500 absolute top-4 right-4" />}
+              <Target className={`h-6 w-6 mb-2 ${ctaSettings.mode === 'form' ? 'text-emerald-500' : 'text-zinc-400'}`} />
+              <div className="font-bold text-sm text-zinc-900 dark:text-white">Form Direct</div>
+              <div className="text-xs text-zinc-500 mt-1">Langsung memunculkan form untuk diisi oleh pelanggan.</div>
             </button>
           </div>
         </div>

@@ -1,52 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-// @ts-ignore - pdf-parse types don't match ESM default export
+// @ts-ignore
 import pdfParse from 'pdf-parse';
+import * as cheerio from 'cheerio';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; 
 
-function chunkText(text: string, maxChunkSize = 1000): string[] {
+function chunkText(text: string, maxChunkSize = 800): string[] {
+  // Better chunking: respect paragraphs, avoid too small or too big chunks
   const paragraphs = text.split(/\n\s*\n/);
   const chunks: string[] = [];
   let currentChunk = '';
 
   for (const paragraph of paragraphs) {
-    const p = paragraph.trim();
+    const p = paragraph.trim().replace(/\s+/g, ' '); // Clean whitespace
     if (!p) continue;
 
     if ((currentChunk.length + p.length) < maxChunkSize) {
       currentChunk += (currentChunk ? '\n\n' : '') + p;
     } else {
-      if (currentChunk) chunks.push(currentChunk);
-      
-      if (p.length >= maxChunkSize) {
-        const sentences = p.split(/(?<=\.)\s+/);
-        let tempChunk = '';
-        for (const sentence of sentences) {
-          if ((tempChunk.length + sentence.length) < maxChunkSize) {
-            tempChunk += (tempChunk ? ' ' : '') + sentence;
-          } else {
-            if (tempChunk) chunks.push(tempChunk);
-            tempChunk = sentence;
-          }
-        }
-        if (tempChunk) currentChunk = tempChunk;
-      } else {
+      if (currentChunk.length >= 200) { // Don't push very small chunks unless necessary
+        chunks.push(currentChunk);
         currentChunk = p;
+      } else {
+         // If current is small, just append and push, or split
+         currentChunk += (currentChunk ? '\n\n' : '') + p;
+         if (currentChunk.length >= maxChunkSize * 1.5) {
+             chunks.push(currentChunk.slice(0, maxChunkSize));
+             currentChunk = currentChunk.slice(maxChunkSize);
+         } else {
+             chunks.push(currentChunk);
+             currentChunk = '';
+         }
       }
     }
   }
   
-  if (currentChunk) {
+  if (currentChunk.length > 50) { // ignore trailing tiny fragments
     chunks.push(currentChunk);
   }
 
   return chunks;
 }
 
-// Helper to execute generation with Rotator
 async function generateWithRotator(apiKeys: string[], executeFn: (genAI: GoogleGenerativeAI) => Promise<any>) {
   if (!apiKeys || apiKeys.length === 0) {
     throw new Error('No API keys provided by the tenant.');
@@ -58,7 +56,7 @@ async function generateWithRotator(apiKeys: string[], executeFn: (genAI: GoogleG
       if (!key) continue;
       const genAI = new GoogleGenerativeAI(key);
       const result = await executeFn(genAI);
-      return result; // Success, return early
+      return result; 
     } catch (error: any) {
       console.warn('API Key failed, trying next...', error?.message || error);
       lastError = error;
@@ -68,7 +66,6 @@ async function generateWithRotator(apiKeys: string[], executeFn: (genAI: GoogleG
   throw lastError || new Error('All provided API keys failed.');
 }
 
-// OpenAI embeddings fallback
 async function getOpenAIEmbedding(text: string): Promise<number[]> {
   const openaiKey = process.env.OPENAI_API_KEY;
   if (!openaiKey) throw new Error('OPENAI_API_KEY not configured for embeddings fallback');
@@ -88,15 +85,48 @@ async function getOpenAIEmbedding(text: string): Promise<number[]> {
   return data.data?.[0]?.embedding ?? [];
 }
 
+async function scrapeWebsite(url: string): Promise<string> {
+    try {
+        const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; LiveChatAI/1.0)' } });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
+        const $ = cheerio.load(html);
+        
+        // Remove unwanted elements
+        $('script, style, nav, footer, header, iframe, noscript').remove();
+        
+        let text = $('body').text();
+        // Clean text
+        text = text.replace(/\s+/g, ' ').trim();
+        return text;
+    } catch (e: any) {
+        throw new Error(`Failed to scrape website: ${e.message}`);
+    }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { fileName, businessId } = await req.json();
+    const { sourceId, businessId } = await req.json();
 
-    if (!fileName || !businessId) {
-      return NextResponse.json({ error: 'Missing fileName or businessId' }, { status: 400 });
+    if (!sourceId || !businessId) {
+      return NextResponse.json({ error: 'Missing sourceId or businessId' }, { status: 400 });
     }
 
-    // 1. Fetch Business Profile to get owner_id and api_keys
+    // 0. Update status to processing
+    await supabaseAdmin.from('KnowledgeSources').update({ status: 'processing' }).eq('id', sourceId);
+
+    // 1. Fetch Source
+    const { data: source, error: sourceError } = await supabaseAdmin
+        .from('KnowledgeSources')
+        .select('*')
+        .eq('id', sourceId)
+        .single();
+    
+    if (sourceError || !source) {
+        return NextResponse.json({ error: 'Source not found' }, { status: 404 });
+    }
+
+    // 2. Fetch Business Profile
     const { data: businessProfile, error: profileError } = await supabaseAdmin
       .from('BusinessProfiles')
       .select('owner_id, api_keys')
@@ -104,7 +134,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (profileError || !businessProfile) {
-      console.error('Failed to fetch business profile:', profileError);
+      await supabaseAdmin.from('KnowledgeSources').update({ status: 'failed', metadata: { error: 'Business profile not found' } }).eq('id', sourceId);
       return NextResponse.json({ error: 'Business profile not found' }, { status: 404 });
     }
 
@@ -114,65 +144,75 @@ export async function POST(req: NextRequest) {
       : systemApiKeys;
 
     if (tenantApiKeys.length === 0) {
-      return NextResponse.json({ error: 'Business owner has not configured AI API Keys and no system fallback available.' }, { status: 500 });
+      await supabaseAdmin.from('KnowledgeSources').update({ status: 'failed', metadata: { error: 'No API keys' } }).eq('id', sourceId);
+      return NextResponse.json({ error: 'No API Keys' }, { status: 500 });
     }
 
-    // 2. Download the file from Supabase Storage
-    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-      .from('knowledge_base')
-      .download(fileName);
-
-    if (downloadError || !fileData) {
-      console.error('Download error:', downloadError);
-      return NextResponse.json({ error: 'Failed to download file from storage' }, { status: 500 });
-    }
-
-    // 3. Extract text based on file type
+    // 3. Extract text based on source type
     let text = '';
-    const arrayBuffer = await fileData.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    
+    if (source.type === 'website') {
+        if (!source.url) throw new Error("URL is missing for website source");
+        text = await scrapeWebsite(source.url);
+    } else if (source.type === 'document' || source.type === 'faq') {
+        // Fetch from storage. We assume url contains the storage path like 'businessId/filename.pdf'
+        if (!source.url) throw new Error("Storage path is missing");
+        
+        const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+            .from('knowledge_base')
+            .download(source.url);
 
-    if (fileName.toLowerCase().endsWith('.pdf')) {
-      const result = await pdfParse(buffer);
-      text = result.text;
-    } else if (fileName.toLowerCase().endsWith('.txt')) {
-      text = buffer.toString('utf-8');
+        if (downloadError || !fileData) {
+            throw new Error('Failed to download file from storage');
+        }
+
+        const arrayBuffer = await fileData.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        if (source.url.toLowerCase().endsWith('.pdf')) {
+            const result = await pdfParse(buffer);
+            text = result.text;
+        } else {
+            // Treat as txt
+            text = buffer.toString('utf-8');
+        }
     } else {
-      return NextResponse.json({ error: 'Unsupported file type. Only PDF and TXT are supported.' }, { status: 400 });
+        throw new Error("Unknown source type");
     }
 
-    if (!text.trim()) {
-      return NextResponse.json({ error: 'Extracted text is empty' }, { status: 400 });
+    if (!text || !text.trim()) {
+        throw new Error('Extracted text is empty');
     }
 
     // 4. Chunk the text
     const chunks = chunkText(text);
 
-    // 5. Generate embeddings and store in database using Rotator in parallel
+    // Delete existing chunks for this source if retraining
+    await supabaseAdmin.from('KnowledgeDocuments').delete().eq('source_id', sourceId);
+
+    // 5. Generate embeddings
     const embeddingPromises = chunks.map(async (chunk, i) => {
       try {
         let embedding: number[];
         try {
           embedding = await generateWithRotator(tenantApiKeys, async (genAI) => {
               const model = genAI.getGenerativeModel({ model: 'embedding-001' });
-              const result = await model.embedContent(chunk);
+              const result = await model.embedContent(`Source: ${source.title}\n\n${chunk}`);
               return result.embedding.values;
           });
         } catch (geminiError: any) {
           const isQuota = geminiError?.status === 429
             || geminiError?.message?.includes('429')
             || geminiError?.message?.includes('quota');
-          
           if (!isQuota) throw geminiError;
-          
-          console.warn(`Gemini embedding quota exhausted for chunk ${i} — trying OpenAI fallback...`);
           embedding = await getOpenAIEmbedding(chunk);
         }
 
         return {
+          source_id: sourceId,
           business_id: businessId,
           owner_id: businessProfile.owner_id,
-          title: fileName,
+          title: source.title,
           content: chunk,
           embedding: embedding,
           metadata: { chunk_index: i, total_chunks: chunks.length }
@@ -186,25 +226,32 @@ export async function POST(req: NextRequest) {
     const results = await Promise.all(embeddingPromises);
     const recordsToInsert = results.filter((record) => record !== null);
 
-    // 6. Insert into Supabase KnowledgeDocuments table using Admin client
+    // 6. Insert chunks
     if (recordsToInsert.length > 0) {
       const { error: insertError } = await supabaseAdmin
         .from('KnowledgeDocuments')
         .insert(recordsToInsert);
 
       if (insertError) {
-        console.error('Insert error:', insertError);
-        return NextResponse.json({ error: 'Failed to insert embeddings into database' }, { status: 500 });
+        throw new Error('Failed to insert chunks: ' + insertError.message);
       }
+    } else {
+        throw new Error('No valid chunks were embedded');
     }
+
+    // 7. Update status to ready
+    await supabaseAdmin.from('KnowledgeSources').update({ 
+        status: 'ready', 
+        updated_at: new Date().toISOString()
+    }).eq('id', sourceId);
 
     return NextResponse.json({ 
       success: true, 
-      message: `Successfully processed ${fileName} into ${recordsToInsert.length} chunks.`
+      message: `Successfully processed ${source.title} into ${recordsToInsert.length} chunks.`
     });
 
   } catch (error: any) {
     console.error('Processing error:', error);
-    return NextResponse.json({ error: error?.message || 'An unexpected error occurred during processing' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'An unexpected error occurred' }, { status: 500 });
   }
 }

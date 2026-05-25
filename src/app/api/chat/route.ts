@@ -43,7 +43,7 @@ async function generateWithGroq(
       role: 'system',
       content: systemInstruction +
         '\n\nRespond ONLY with a valid JSON object. Required fields:\n' +
-        '{"reply": "string", "customerName": "string or null", "customerPhone": "string or null", "customerIntent": "string", "leadStatus": "cold|warm|hot", "aiNote": "string", "suggestions": ["string", "string"]}',
+        '{"reply": "string", "customerName": "string or null", "customerPhone": "string or null", "customerIntent": "string", "leadStatus": "cold|warm|hot", "aiNote": "string", "waMessageDraft": "string", "showForm": boolean, "suggestions": ["string", "string"]}',
     },
     ...history.map((msg) => ({
       role: msg.role === 'model' ? 'assistant' : 'user',
@@ -89,7 +89,7 @@ async function generateWithOpenAI(
       role: 'system',
       content: systemInstruction +
         '\n\nRespond ONLY with a valid JSON object. Required fields:\n' +
-        '{"reply": "string", "customerName": "string or null", "customerPhone": "string or null", "customerIntent": "string", "leadStatus": "cold|warm|hot", "aiNote": "string", "suggestions": ["string", "string"]}',
+        '{"reply": "string", "customerName": "string or null", "customerPhone": "string or null", "customerIntent": "string", "leadStatus": "cold|warm|hot", "aiNote": "string", "waMessageDraft": "string", "showForm": boolean, "suggestions": ["string", "string"]}',
     },
     ...history.map((msg) => ({
       role: msg.role === 'model' ? 'assistant' : 'user',
@@ -189,6 +189,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Business profile not found' }, { status: 404 });
     }
 
+    if (conversationId) {
+      const { data: convData } = await supabase.from('Conversations').select('status').eq('id', conversationId).single();
+      if (convData && convData.status === 'human_takeover') {
+         // Save the user's message but do NOT trigger AI
+         const { data: oldConv } = await supabase.from('Conversations').select('logs').eq('id', conversationId).single();
+         const newLogs = [...(oldConv?.logs || []), { role: 'user', content: lastUserMessage }];
+         await supabase.from('Conversations').update({ logs: newLogs, updated_at: new Date().toISOString() }).eq('id', conversationId);
+         
+         return NextResponse.json({
+            reply: '', // No reply
+            humanTakeoverActive: true
+         });
+      }
+    }
+
     const systemApiKeys = process.env.GEMINI_API_KEY ? [process.env.GEMINI_API_KEY] : [];
     const tenantApiKeys: string[] = Array.isArray(businessProfile.api_keys) && businessProfile.api_keys.length > 0
       ? businessProfile.api_keys
@@ -220,13 +235,16 @@ export async function POST(req: NextRequest) {
       });
       if (searchError) console.error('Vector search error:', searchError);
       if (documents && documents.length > 0) {
-        knowledgeContext = documents.map((doc: any) => doc.content).join('\n\n');
+        // Sort by priority (1 is highest priority like FAQ, 4 is lowest like Website)
+        const sortedDocs = documents.sort((a: any, b: any) => (a.priority || 3) - (b.priority || 3));
+        knowledgeContext = sortedDocs.map((doc: any) => `[Prioritas: ${doc.priority}] [Sumber: ${doc.source_type}]\n${doc.content}`).join('\n\n');
       }
     } catch (embeddingError: any) {
       console.warn('RAG pipeline failed, proceeding without knowledge context:', embeddingError?.message);
     }
 
     const aiPersonality = businessProfile.ai_personality || { mode: 'professional', formality: 3, emoji_level: 2 };
+    const ctaSettings = businessProfile.cta_settings || { mode: 'hybrid' };
     
     // Map personality settings to prompt instructions
     const formalityGuidance = aiPersonality.formality >= 4 ? "Gunakan bahasa formal dan sangat sopan." :
@@ -241,6 +259,10 @@ export async function POST(req: NextRequest) {
                          aiPersonality.mode === 'fast-selling' ? "Kamu to-the-point, fokus pada jualan (conversion), dan selalu berusaha mengarahkan ke transaksi." :
                          "Kamu adalah representasi profesional dari brand.";
 
+    const ctaModeGuidance = ctaSettings.mode === 'conversational' ? "DILARANG memunculkan form. Tanya data satu per satu lewat obrolan (soft ask)." :
+                            ctaSettings.mode === 'form' ? "Langsung trigger 'showForm: true' di awal jika user butuh bantuan agar mereka langsung mengisi data." :
+                            "Gunakan Hybrid: Jika intent user sudah teridentifikasi dengan jelas, trigger 'showForm: true' agar user bisa mengisi sisa data secara efisien melalui form.";
+
     const systemInstruction = `
 You are an AI Customer Service agent named "${businessProfile.assistant_name || 'Asisten AI'}" working for a business named "${businessProfile.name}".
 Your goal is to answer user questions politely based strictly on the provided Knowledge Context.
@@ -254,20 +276,24 @@ PERSONALITY & TONE:
 KNOWLEDGE CONTEXT:
 ${knowledgeContext ? knowledgeContext : 'No specific knowledge base provided.'}
 
+AI CONFIDENCE & ANTI-HALLUCINATION RULE:
+- Jika jawaban dari pertanyaan user TIDAK ADA di dalam KNOWLEDGE CONTEXT di atas, atau kamu ragu/confidence rendah, DILARANG mengarang jawaban (hallucination) atau berspekulasi.
+- Jawab dengan safe response secara natural, contoh: "Untuk memastikan informasi tetap akurat, izinkan tim kami membantu langsung 😊" lalu arahkan user ke admin (dengan menset leadStatus = hot atau menggunakan tombol eskalasi).
+
 QUALIFICATION RULES:
 ${businessProfile.prompt_rules ? businessProfile.prompt_rules : 'Determine if the user has a serious intent to purchase. Ask relevant qualifying questions if their intent is unclear.'}
 
 INSTRUCTIONS FOR SOFT CTA FLOW:
 1. HELP FIRST: Answer the user's questions accurately using ONLY the Knowledge Context. Bangun trust dan bantu kebutuhan mereka terlebih dahulu. JANGAN TERDENGAR SEPERTI FORM BOT.
 2. NATURAL QUALIFICATION: Gali kebutuhan dan minat user. Update "customerIntent" berdasarkan obrolan sejauh ini.
-3. SOFT ASK NAME: Setelah user merasa terbantu, secara natural pancing untuk meminta nama mereka ("Oh ya, dengan kakak siapa ini?").
-4. SOFT ASK WHATSAPP: Jika mereka sudah cukup yakin (warm/hot) dan butuh eskalasi/detail lebih lanjut, secara halus tanyakan WhatsApp mereka sebelum transfer ke admin.
+3. HINDARI BAHASA INTERNAL: Jangan gunakan kata-kata seperti "prospek", "lead", "kualifikasi", atau "hot lead" kepada user. Gunakan bahasa natural seperti "kebutuhan", "bantuan", "tim kami".
+4. PENGUMPULAN DATA: ${ctaModeGuidance}
 5. LEAD STATUS EVALUATION:
    - "cold": User hanya eksplorasi, belum ada tanda ketertarikan jelas.
    - "warm": User mulai tertarik, bertanya harga, atau menanyakan detail spesifik.
-   - "hot": User sudah siap dihubungkan ke admin, sudah memberikan nama & kontak.
-6. HANYA setelah mereka siap (status hot), persilakan mereka untuk klik tombol penghubung ke admin/CS. JANGAN arahkan ke CS jika mereka masih di fase eksplorasi awal.
-7. Selalu isi field "aiNote" dengan rangkuman kondisi pelanggan (misal: "Tertarik solusi A, belum yakin soal harga").
+   - "hot": User sudah siap dihubungkan ke admin, sudah memberikan kontak ATAU sudah mengisi form.
+7. Selalu isi field "aiNote" dengan rangkuman kondisi pelanggan.
+8. Selalu hasilkan "waMessageDraft" jika status mulai warm/hot. Tulis DRAFT PESAN WHATSAPP ini dari sudut pandang CUSTOMER (first-person). Contoh: "Halo CITYSKY 👋 Saya Ahmad. Saya tertarik konsultasi interior rumah minimalis untuk ruang tamu. Budget sekitar 50-100 juta. Domisili Bandung. Mohon info langkah selanjutnya 😊". Jangan gunakan gaya bahasa kaku atau internal CRM.
 
 FORMATTING RULES (very important):
 - Jawablah dengan singkat, padat, idealnya 1-4 baris per paragraf. Hindari jawaban panjang yang membosankan.
@@ -318,6 +344,8 @@ You can include multiple [PRODUCT_CARD] blocks. Only use them when explicitly di
                 customerIntent: { type: SchemaType.STRING, description: 'Niat atau topik utama yang dicari user' },
                 leadStatus: { type: SchemaType.STRING, description: 'Status lead: cold, warm, atau hot' },
                 aiNote: { type: SchemaType.STRING, description: 'Rangkuman internal AI tentang kondisi dan kebutuhan user (readable by admin)' },
+                waMessageDraft: { type: SchemaType.STRING, description: 'Draft pesan WA dari sudut pandang customer (first-person). Natural dan sopan.' },
+                showForm: { type: SchemaType.BOOLEAN, description: 'True jika intent sudah jelas dan ingin memunculkan Form CTA agar user mengisi data' },
                 suggestions: {
                   type: SchemaType.ARRAY,
                   description: '2-3 tombol quick reply relevan untuk balasan berikutnya',
@@ -365,14 +393,16 @@ You can include multiple [PRODUCT_CARD] blocks. Only use them when explicitly di
     const isQualifiedFinal = structuredResponse.leadStatus === 'hot';
 
     if (conversationId) {
-      await supabase.from('Conversations').update({
+      await supabase.from('Conversations').upsert({
+        id: conversationId,
+        business_id: businessId,
         logs: newLogs,
         is_qualified: isQualifiedFinal,
         lead_summary: constructedSummary,
         customer_name: structuredResponse.customerName || null,
         customer_phone: structuredResponse.customerPhone || null,
         updated_at: new Date().toISOString()
-      }).eq('id', conversationId);
+      }, { onConflict: 'id' });
 
       if (isQualifiedFinal) {
         // Upsert to Leads
@@ -392,6 +422,8 @@ You can include multiple [PRODUCT_CARD] blocks. Only use them when explicitly di
       isQualified: isQualifiedFinal,
       leadStatus: structuredResponse.leadStatus,
       leadSummary: constructedSummary,
+      waMessageDraft: structuredResponse.waMessageDraft || '',
+      showForm: structuredResponse.showForm === true,
       suggestions: structuredResponse.suggestions
     });
 

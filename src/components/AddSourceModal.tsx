@@ -9,11 +9,12 @@ interface AddSourceModalProps {
   onClose: () => void;
   onUploadFile: (file: File) => Promise<void>;
   onSubmitText: (title: string, content: string) => Promise<void>;
+  onSubmitWebsite?: (url: string) => Promise<void>;
   uploading: boolean;
   businessId: string;
 }
 
-export default function AddSourceModal({ isOpen, onClose, onUploadFile, onSubmitText, uploading, businessId }: AddSourceModalProps) {
+export default function AddSourceModal({ isOpen, onClose, onUploadFile, onSubmitText, onSubmitWebsite, uploading, businessId }: AddSourceModalProps) {
   const [step, setStep] = useState<'choose' | 'file' | 'text' | 'website'>('choose');
   const [manualTitle, setManualTitle] = useState('');
   const [manualText, setManualText] = useState('');
@@ -45,31 +46,10 @@ export default function AddSourceModal({ isOpen, onClose, onUploadFile, onSubmit
   };
 
   const handleWebsiteSubmit = async () => {
-    if (!websiteUrl.trim()) return;
+    if (!websiteUrl.trim() || !onSubmitWebsite) return;
     setIsScraping(true);
     try {
-      const response = await fetch('/api/scrape-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: websiteUrl, businessId }),
-      });
-      
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Gagal mengambil data website');
-      }
-      
-      const data = await response.json();
-      
-      // After scraping, we have the file path. Now process it.
-      const processRes = await fetch('/api/process-document', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileName: data.fileName, businessId })
-      });
-
-      if (!processRes.ok) throw new Error('Gagal melatih AI dengan data website');
-
+      await onSubmitWebsite(websiteUrl);
       handleClose();
     } catch (err: any) {
       console.error('Scraping error:', err);

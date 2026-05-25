@@ -43,6 +43,8 @@ export default async function WidgetPage({ params }: WidgetPageProps) {
         escalationLabel={handover.escalation_label || 'Owner'}
         primaryColor={branding.primary_color || '#059669'}
         showBranding={branding.show_branding !== false}
+        themeId={businessProfile.theme_id}
+        customThemeConfig={businessProfile.custom_theme}
       />
     </div>
   );

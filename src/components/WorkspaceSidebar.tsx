@@ -39,7 +39,7 @@ export default function WorkspaceSidebar({ currentBusinessId }: WorkspaceSidebar
     {
       title: 'Operations',
       items: [
-        { name: 'Smart Inbox', href: `/admin/${currentBusinessId}/conversations`, icon: MessageSquare },
+        { name: 'Live Inbox', href: `/admin/${currentBusinessId}/conversations`, icon: MessageSquare },
         { name: 'Lead Management', href: `/admin/${currentBusinessId}/leads`, icon: Contact },
         { name: 'Analytics', href: `/admin/${currentBusinessId}/analytics`, icon: BarChart },
       ]
